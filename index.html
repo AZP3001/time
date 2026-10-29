@@ -95,7 +95,7 @@ $('d1').value = DIFF_START;
 $('d2').value = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 const showDiff = () => {
   const ms = new Date($('d2').value + 'T00:00') - new Date($('d1').value + 'T00:00');
-  $('diff').textContent = isNaN(ms) ? 'Pick two dates' : fmt(ms) + ` (${Math.round(ms / 864e5).toLocaleString()} days)`;
+  $('diff').textContent = isNaN(ms) ? 'Pick two dates' : fmt(ms);
 };
 $('d1').oninput = $('d2').oninput = showDiff;
 showDiff();
