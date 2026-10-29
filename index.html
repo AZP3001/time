@@ -13,6 +13,13 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
   ['WW2 / 1 September', 9, 1],
   ['9/11', 9, 11],
 ];
+const PEOPLE = [                     // menu people: [name, born, died (null = still alive)]
+  ['Vladimir Putin', '1952-10-07', null],
+  ['Donald Trump', '1946-06-14', null],
+  ['Joseph Stalin', '1878-12-18', '1953-03-05'],
+  ['Charlie Kirk', '1993-10-14', '2025-09-10'],
+  ['JFK', '1917-05-29', '1963-11-22'],
+];
 // ================================
 </script>
 <meta charset="utf-8">
@@ -20,8 +27,9 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
 <title>UTC to Hitler Converter</title>
 <style>
   :root { --bg: #f6f7f9; --card: #fff; --text: #222; --muted: #666; --line: #ccd; color-scheme: light; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #121417; --card: #1e2126; --text: #e8e8e8; --muted: #9aa; --line: #3a3f47; color-scheme: dark; } }
-  body { font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 16px; background: var(--bg); color: var(--text); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme=light]) { --bg: #121417; --card: #1e2126; --text: #e8e8e8; --muted: #9aa; --line: #3a3f47; color-scheme: dark; } }
+  :root[data-theme=dark] { --bg: #121417; --card: #1e2126; --text: #e8e8e8; --muted: #9aa; --line: #3a3f47; color-scheme: dark; }
+  body { position: relative; font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 16px; background: var(--bg); color: var(--text); }
   section { background: var(--card); border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px #0002; }
   h1 { font-size: 1.6rem; } h2 { margin-top: 0; font-size: 1.15rem; }
   input, select, button { font: inherit; padding: 6px 10px; margin: 4px 4px 4px 0; }
@@ -36,10 +44,29 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
   .grid input::-webkit-inner-spin-button, .grid input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .grid input:focus { outline: 2px solid #4a7dff; border-color: transparent; }
   .grid[hidden] { display: none; }
+  #menu { position: absolute; top: 16px; right: 16px; z-index: 1; }
+  #menu > summary { list-style: none; cursor: pointer; font-size: 1.6rem; line-height: 1; padding: 4px 8px; border-radius: 8px; }
+  #menu > summary::-webkit-details-marker { display: none; }
+  #menu .panel { position: absolute; right: 0; width: min(320px, calc(100vw - 32px)); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 4px 16px #0004; }
+  #menu h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 8px 0 4px; }
+  #menu input { width: 100%; }
+  #pResults button { display: block; width: 100%; text-align: left; }
   #dates div { padding: 4px 0; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
+<details id="menu">
+  <summary aria-label="Menu">☰</summary>
+  <div class="panel">
+    <h3>Theme</h3>
+    <button data-set-theme="light">Light</button><button data-set-theme="dark">Dark</button>
+    <h3>People</h3>
+    <div id="people"></div>
+    <h3>Search a person (experimental)</h3>
+    <input id="pSearch" type="search" placeholder="Search Wikipedia" aria-label="Search a person">
+    <div id="pResults"></div>
+  </div>
+</details>
 <h1><span class="u"></span></h1>
 <p><small>1 <span class="u"></span> = <span id="days"></span> days</small></p>
 <div class="out" id="now"></div>
@@ -88,16 +115,16 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
 </section>
 
 <script>
-const PETER_MS = PETER_DAYS * 86400 * 1000;
-const fmt = (ms, d = 12) => (ms / PETER_MS).toFixed(d) + ' ' + PETER;
+// The active unit; changed from the People menu
+let UNIT = PETER, UNIT_MS = PETER_DAYS * 864e5;
+const fmt = (ms, d = 12) => (ms / UNIT_MS).toFixed(d) + ' ' + UNIT;
 const $ = id => document.getElementById(id);
-document.title = PETER + ' Time';
-document.querySelectorAll('.u').forEach(e => e.textContent = PETER);
-$('days').textContent = PETER_DAYS.toLocaleString();
+const load = k => { try { return localStorage[k]; } catch {} };
+const store = (k, v) => { try { localStorage[k] = v; } catch {} };
 
 // Current date counted from 1 January of year 1
 const YEAR1 = new Date(0, 0, 1); YEAR1.setFullYear(1);
-const showNow = () => { $('now').textContent = fmt(Date.now() - YEAR1, 6).replace(/ .*/, '') + ` ${PETER[0].toUpperCase()}AC (${PETER} After Christ)`; };
+const showNow = () => { $('now').textContent = fmt(Date.now() - YEAR1, 6).replace(/ .*/, '') + ` ${UNIT[0].toUpperCase()}AC (${UNIT} After Christ)`; };
 
 // Date difference (both dates read as local midnight)
 const today = new Date(), pad = n => String(n).padStart(2, '0');
@@ -108,7 +135,6 @@ const showDiff = () => {
   $('diff').textContent = isNaN(ms) ? 'Pick two dates' : fmt(ms);
 };
 $('d1').oninput = $('d2').oninput = showDiff;
-showDiff();
 
 const fields = [...document.querySelectorAll('.grid input')];
 const convert = () => { $('conv').textContent = fmt(fields.reduce((t, f) => t + (+f.value || 0) * f.dataset.s, 0) * 1000); };
@@ -118,11 +144,10 @@ fields.forEach((f, i) => {
 });
 // Stop the mouse wheel from changing number inputs instead of scrolling the page
 document.querySelectorAll('input[type=number]').forEach(f => f.addEventListener('wheel', () => f.blur(), { passive: true }));
-convert();
 
 // Reverse: units -> normal time
 const showRev = () => {
-  let sec = Math.abs(+$('revIn').value || 0) * PETER_MS / 1000;
+  let sec = Math.abs(+$('revIn').value || 0) * UNIT_MS / 1000;
   $('conv').textContent = [['years', 31556952], ['days', 86400], ['hours', 3600], ['minutes', 60], ['seconds', 1]]
     .map(([n, len]) => { const v = n === 'seconds' ? +sec.toFixed(2) : Math.floor(sec / len); sec -= v * len; return v + ' ' + n; }).join(', ');
 };
@@ -151,9 +176,83 @@ $('swReset').onclick = () => { swAcc = 0; if (swStart) swStart = Date.now(); };
 
 // Timer (silent)
 let tEnd = null;
-$('tStart').onclick = () => { tEnd = Date.now() + $('tIn').value * PETER_MS; };
+$('tStart').onclick = () => { tEnd = Date.now() + $('tIn').value * UNIT_MS; };
 $('tStop').onclick = () => { tEnd = null; };
 $('tReset').onclick = () => { tEnd = null; $('tOut').textContent = ''; };
+
+// Theme
+const setTheme = t => { document.documentElement.dataset.theme = t; store('theme', t); };
+document.querySelectorAll('[data-set-theme]').forEach(b => b.onclick = () => setTheme(b.dataset.setTheme));
+if (load('theme')) document.documentElement.dataset.theme = load('theme');
+
+// People: the unit becomes that person's lifespan (until today if still alive)
+const setUnit = (name, ms) => {
+  UNIT = name; UNIT_MS = ms;
+  document.title = name + ' Time';
+  document.querySelectorAll('.u').forEach(e => e.textContent = name);
+  $('days').textContent = Math.round(ms / 864e5).toLocaleString();
+  $('rev').hidden ? convert() : showRev();
+  showDiff();
+};
+// p = [name, born, died] or [PETER] for the default unit; dates are ISO strings
+const pick = p => {
+  setUnit(p[1] ? p[0].replace(/\s*\(.*\)/, '').split(' ').pop() + 's' : p[0],
+          p[1] ? (p[2] ? new Date(p[2]) : Date.now()) - new Date(p[1]) : PETER_DAYS * 864e5);
+  store('person', JSON.stringify(p));
+  $('menu').open = false;
+};
+const personButton = (label, p, parent) => {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.onclick = () => pick(p);
+  parent.append(b);
+  return b;
+};
+personButton(PETER + ' (default)', [PETER], $('people'));
+PEOPLE.forEach(p => personButton(p[0], p, $('people')));
+let saved; try { saved = JSON.parse(load('person')); } catch {}
+pick(saved || [PETER]);
+
+// Wikipedia search -> Wikidata birth (P569) / death (P570) dates
+const API = 'https://en.wikipedia.org/w/api.php?format=json&origin=*&action=query';
+// shortcut: ignores Julian vs Gregorian calendar, fine for a few days' error on old dates
+const wdDate = claims => {
+  const t = claims?.[0]?.mainsnak?.datavalue?.value?.time;
+  const m = t && t.match(/^([+-]\d+)-(\d\d)-(\d\d)/);
+  if (!m) return null;
+  const d = new Date(Date.UTC(2000, Math.max(+m[2], 1) - 1, Math.max(+m[3], 1)));
+  d.setUTCFullYear(+m[1]);
+  return d.toISOString();
+};
+let searchTimer;
+$('pSearch').oninput = () => {
+  clearTimeout(searchTimer);
+  const q = $('pSearch').value.trim();
+  if (!q) return $('pResults').replaceChildren();
+  searchTimer = setTimeout(async () => {
+    try {
+      const r = await (await fetch(`${API}&generator=search&gsrlimit=6&prop=pageprops|description&ppprop=wikibase_item&gsrsearch=${encodeURIComponent(q)}`)).json();
+      if (q !== $('pSearch').value.trim()) return;
+      $('pResults').replaceChildren();
+      Object.values(r.query?.pages || {}).sort((a, b) => a.index - b.index).forEach(pg => {
+        const b = personButton(pg.title + (pg.description ? ' – ' + pg.description : ''), null, $('pResults'));
+        b.onclick = async () => {
+          b.textContent = 'Loading…';
+          try {
+            const id = pg.pageprops?.wikibase_item;
+            const wd = await (await fetch(`https://www.wikidata.org/w/api.php?format=json&origin=*&action=wbgetentities&props=claims&ids=${id}`)).json();
+            const c = wd.entities[id].claims;
+            const born = wdDate(c.P569);
+            if (!born) { b.textContent = pg.title + ' – no birth date found'; return; }
+            pick([pg.title, born, wdDate(c.P570)]);
+            $('pSearch').value = ''; $('pResults').replaceChildren();
+          } catch { b.textContent = pg.title + ' – could not load dates'; }
+        };
+      });
+      if (!$('pResults').children.length) $('pResults').textContent = 'No results';
+    } catch { $('pResults').textContent = 'Search failed'; }
+  }, 300);
+};
 
 setInterval(() => {
   $('sw').textContent = fmt(swNow());
