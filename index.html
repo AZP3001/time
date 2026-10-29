@@ -1,6 +1,20 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>
+// ===== Settings: edit these =====
+const PETER = 'Peters';              // name of the time unit, shown everywhere
+const PETER_DAYS = 20464;            // how many days one unit is
+const DIFF_START = '2000-01-01';     // default start date for the date difference (YYYY-MM-DD)
+const DATES = [                      // countdowns: [name, month 1-12, day]
+  ['New Year', 1, 1],
+  ['Halloween', 10, 31],
+  ['Christmas', 12, 25],
+  ['Birthday (1 September)', 9, 1],
+  ['Birthday (11 September)', 9, 11],
+];
+// ================================
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Peter Time</title>
@@ -20,8 +34,9 @@
 </style>
 </head>
 <body>
-<h1>Peter Time</h1>
-<p><small>1 Peter = 20,464 days</small></p>
+<h1><span class="u"></span> Time</h1>
+<p><small>1 <span class="u"></span> = <span id="days"></span> days</small></p>
+<div class="out" id="now"></div>
 
 <section>
   <h2>Converter</h2>
@@ -38,27 +53,52 @@
 </section>
 
 <section>
+  <h2>Date difference</h2>
+  <label>From <input id="d1" type="date"></label>
+  <label>To <input id="d2" type="date"></label>
+  <div class="out" id="diff"></div>
+</section>
+
+<section>
   <h2>Time until</h2>
   <div id="dates"></div>
 </section>
 
 <section>
   <h2>Stopwatch</h2>
-  <div class="out" id="sw">0 Peters</div>
+  <div class="out" id="sw"></div>
   <button id="swStart">Start</button><button id="swReset">Reset</button>
 </section>
 
 <section>
   <h2>Timer</h2>
-  <input id="tIn" type="number" min="0" step="any" value="0.0000001" aria-label="Peters"> Peters
-  <div class="out" id="tOut">0 Peters left</div>
+  <input id="tIn" type="number" min="0" step="any" value="0.0000001" aria-label="Amount"> <span class="u"></span>
+  <div class="out" id="tOut"></div>
   <button id="tStart">Start</button><button id="tStop">Stop</button>
 </section>
 
 <script>
-const PETER_MS = 20464 * 86400 * 1000;
-const fmt = ms => (ms / PETER_MS).toFixed(12) + ' Peters';
+const PETER_MS = PETER_DAYS * 86400 * 1000;
+const fmt = (ms, d = 12) => (ms / PETER_MS).toFixed(d) + ' ' + PETER;
 const $ = id => document.getElementById(id);
+document.title = PETER + ' Time';
+document.querySelectorAll('.u').forEach(e => e.textContent = PETER);
+$('days').textContent = PETER_DAYS.toLocaleString();
+
+// Current date counted from 1 January of year 1
+const YEAR1 = new Date(0, 0, 1); YEAR1.setFullYear(1);
+const showNow = () => { $('now').textContent = fmt(Date.now() - YEAR1, 6).replace(/ .*/, '') + ` ${PETER[0].toUpperCase()}AC (${PETER} After Christ)`; };
+
+// Date difference (both dates read as local midnight)
+const today = new Date(), pad = n => String(n).padStart(2, '0');
+$('d1').value = DIFF_START;
+$('d2').value = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+const showDiff = () => {
+  const ms = new Date($('d2').value + 'T00:00') - new Date($('d1').value + 'T00:00');
+  $('diff').textContent = isNaN(ms) ? 'Pick two dates' : fmt(ms) + ` (${Math.round(ms / 864e5).toLocaleString()} days)`;
+};
+$('d1').oninput = $('d2').oninput = showDiff;
+showDiff();
 
 const fields = [...document.querySelectorAll('.grid input')];
 const convert = () => { $('conv').textContent = fmt(fields.reduce((t, f) => t + (+f.value || 0) * f.dataset.s, 0) * 1000); };
@@ -70,9 +110,8 @@ fields.forEach((f, i) => {
 document.querySelectorAll('input[type=number]').forEach(f => f.addEventListener('wheel', () => f.blur(), { passive: true }));
 convert();
 
-// Countdowns to yearly dates (month is 0-based)
-const DATES = [['New Year', 0, 1], ['Halloween', 9, 31], ['Christmas', 11, 25], ['Birthday (1 September)', 8, 1], ['Birthday (11 September)', 8, 11]];
-const nextDate = (m, d) => { const n = new Date(), t = new Date(n.getFullYear(), m, d); if (t <= n) t.setFullYear(t.getFullYear() + 1); return t; };
+// Countdowns to yearly dates
+const nextDate = (m, d) => { const n = new Date(), t = new Date(n.getFullYear(), m - 1, d); if (t <= n) t.setFullYear(t.getFullYear() + 1); return t; };
 const showDates = () => {
   $('dates').innerHTML = DATES.map(([name, m, d]) => [name, nextDate(m, d) - Date.now()])
     .sort((a, b) => a[1] - b[1]).map(([name, ms]) => `<div><b>${name}:</b> ${fmt(ms)}</div>`).join('');
@@ -95,6 +134,7 @@ $('tStop').onclick = () => { tEnd = null; };
 setInterval(() => {
   $('sw').textContent = fmt(swNow());
   showDates();
+  showNow();
   if (tEnd) {
     const left = tEnd - Date.now();
     $('tOut').textContent = left > 0 ? fmt(left) + ' left' : "Time's up!";
