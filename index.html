@@ -11,6 +11,12 @@
   input, select, button { font: inherit; padding: 6px 10px; margin: 4px 4px 4px 0; }
   .out { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; word-break: break-all; }
   small { color: #666; }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .grid label { display: flex; flex-direction: column; font-size: .9rem; }
+  .grid input { width: 100%; margin: 2px 0 0; }
+  #dates div { padding: 4px 0; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -19,17 +25,21 @@
 
 <section>
   <h2>Converter</h2>
-  <input id="amt" type="number" value="1" step="any" aria-label="Amount">
-  <select id="unit" aria-label="Unit">
-    <option value="1">seconds</option>
-    <option value="60">minutes</option>
-    <option value="3600">hours</option>
-    <option value="86400" selected>days</option>
-    <option value="604800">weeks</option>
-    <option value="2629746">months</option>
-    <option value="31556952">years</option>
-  </select>
+  <div class="grid">
+    <label>Years <input data-s="31556952" type="number" step="any" inputmode="decimal"></label>
+    <label>Months <input data-s="2629746" type="number" step="any" inputmode="decimal"></label>
+    <label>Weeks <input data-s="604800" type="number" step="any" inputmode="decimal"></label>
+    <label>Days <input data-s="86400" type="number" step="any" inputmode="decimal"></label>
+    <label>Hours <input data-s="3600" type="number" step="any" inputmode="decimal"></label>
+    <label>Minutes <input data-s="60" type="number" step="any" inputmode="decimal"></label>
+    <label>Seconds <input data-s="1" type="number" step="any" inputmode="decimal"></label>
+  </div>
   <div class="out" id="conv"></div>
+</section>
+
+<section>
+  <h2>Time until</h2>
+  <div id="dates"></div>
 </section>
 
 <section>
@@ -50,9 +60,23 @@ const PETER_MS = 20464 * 86400 * 1000;
 const fmt = ms => (ms / PETER_MS).toFixed(12) + ' Peters';
 const $ = id => document.getElementById(id);
 
-const convert = () => { $('conv').textContent = fmt($('amt').value * $('unit').value * 1000); };
-$('amt').oninput = $('unit').onchange = convert;
+const fields = [...document.querySelectorAll('.grid input')];
+const convert = () => { $('conv').textContent = fmt(fields.reduce((t, f) => t + (+f.value || 0) * f.dataset.s, 0) * 1000); };
+fields.forEach((f, i) => {
+  f.oninput = convert;
+  f.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); (fields[i + 1] || f).focus(); if (!fields[i + 1]) f.blur(); } };
+});
+// Stop the mouse wheel from changing number inputs instead of scrolling the page
+document.querySelectorAll('input[type=number]').forEach(f => f.addEventListener('wheel', () => f.blur(), { passive: true }));
 convert();
+
+// Countdowns to yearly dates (month is 0-based)
+const DATES = [['New Year', 0, 1], ['Halloween', 9, 31], ['Christmas', 11, 25], ['Birthday (1 September)', 8, 1], ['Birthday (11 September)', 8, 11]];
+const nextDate = (m, d) => { const n = new Date(), t = new Date(n.getFullYear(), m, d); if (t <= n) t.setFullYear(t.getFullYear() + 1); return t; };
+const showDates = () => {
+  $('dates').innerHTML = DATES.map(([name, m, d]) => [name, nextDate(m, d) - Date.now()])
+    .sort((a, b) => a[1] - b[1]).map(([name, ms]) => `<div><b>${name}:</b> ${fmt(ms)}</div>`).join('');
+};
 
 // Stopwatch
 let swStart = null, swAcc = 0;
@@ -70,6 +94,7 @@ $('tStop').onclick = () => { tEnd = null; };
 
 setInterval(() => {
   $('sw').textContent = fmt(swNow());
+  showDates();
   if (tEnd) {
     const left = tEnd - Date.now();
     $('tOut').textContent = left > 0 ? fmt(left) + ' left' : "Time's up!";
