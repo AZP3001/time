@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peter Time</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 16px; background: #f6f7f9; color: #222; }
+  section { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px #0002; }
+  h1 { font-size: 1.6rem; } h2 { margin-top: 0; font-size: 1.15rem; }
+  input, select, button { font: inherit; padding: 6px 10px; margin: 4px 4px 4px 0; }
+  .out { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; word-break: break-all; }
+  small { color: #666; }
+</style>
+</head>
+<body>
+<h1>Peter Time</h1>
+<p><small>1 Peter = 20,464 days</small></p>
+
+<section>
+  <h2>Converter</h2>
+  <input id="amt" type="number" value="1" step="any" aria-label="Amount">
+  <select id="unit" aria-label="Unit">
+    <option value="1">seconds</option>
+    <option value="60">minutes</option>
+    <option value="3600">hours</option>
+    <option value="86400" selected>days</option>
+    <option value="604800">weeks</option>
+    <option value="2629746">months</option>
+    <option value="31556952">years</option>
+  </select>
+  <div class="out" id="conv"></div>
+</section>
+
+<section>
+  <h2>Stopwatch</h2>
+  <div class="out" id="sw">0 Peters</div>
+  <button id="swStart">Start</button><button id="swReset">Reset</button>
+</section>
+
+<section>
+  <h2>Timer</h2>
+  <input id="tIn" type="number" min="0" step="any" value="0.0000001" aria-label="Peters"> Peters
+  <div class="out" id="tOut">0 Peters left</div>
+  <button id="tStart">Start</button><button id="tStop">Stop</button>
+</section>
+
+<script>
+const PETER_MS = 20464 * 86400 * 1000;
+const fmt = ms => (ms / PETER_MS).toFixed(12) + ' Peters';
+const $ = id => document.getElementById(id);
+
+const convert = () => { $('conv').textContent = fmt($('amt').value * $('unit').value * 1000); };
+$('amt').oninput = $('unit').onchange = convert;
+convert();
+
+// Stopwatch
+let swStart = null, swAcc = 0;
+const swNow = () => swAcc + (swStart ? Date.now() - swStart : 0);
+$('swStart').onclick = () => {
+  if (swStart) { swAcc = swNow(); swStart = null; $('swStart').textContent = 'Start'; }
+  else { swStart = Date.now(); $('swStart').textContent = 'Pause'; }
+};
+$('swReset').onclick = () => { swAcc = 0; if (swStart) swStart = Date.now(); };
+
+// Timer (silent)
+let tEnd = null;
+$('tStart').onclick = () => { tEnd = Date.now() + $('tIn').value * PETER_MS; };
+$('tStop').onclick = () => { tEnd = null; };
+
+setInterval(() => {
+  $('sw').textContent = fmt(swNow());
+  if (tEnd) {
+    const left = tEnd - Date.now();
+    $('tOut').textContent = left > 0 ? fmt(left) + ' left' : "Time's up!";
+    if (left <= 0) tEnd = null;
+  }
+}, 50);
+</script>
+</body>
+</html>
