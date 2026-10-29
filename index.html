@@ -35,6 +35,7 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
   .grid input { width: 100%; margin: 3px 0 0; padding: 8px 4px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); -moz-appearance: textfield; }
   .grid input::-webkit-inner-spin-button, .grid input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .grid input:focus { outline: 2px solid #4a7dff; border-color: transparent; }
+  .grid[hidden] { display: none; }
   #dates div { padding: 4px 0; font-variant-numeric: tabular-nums; }
 </style>
 </head>
@@ -45,6 +46,10 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
 
 <section>
   <h2>Converter</h2>
+  <button id="swap">⇄ Switch direction</button>
+  <div id="rev" hidden>
+    <input id="revIn" type="number" step="any" inputmode="decimal" placeholder="0" aria-label="Amount"> <span class="u"></span>
+  </div>
   <div class="grid">
     <label>Years <input data-s="31556952" type="number" step="any" inputmode="decimal" placeholder="0"></label>
     <label>Months <input data-s="2629746" type="number" step="any" inputmode="decimal" placeholder="0"></label>
@@ -114,6 +119,19 @@ fields.forEach((f, i) => {
 // Stop the mouse wheel from changing number inputs instead of scrolling the page
 document.querySelectorAll('input[type=number]').forEach(f => f.addEventListener('wheel', () => f.blur(), { passive: true }));
 convert();
+
+// Reverse: units -> normal time
+const showRev = () => {
+  let sec = Math.abs(+$('revIn').value || 0) * PETER_MS / 1000;
+  $('conv').textContent = [['years', 31556952], ['days', 86400], ['hours', 3600], ['minutes', 60], ['seconds', 1]]
+    .map(([n, len]) => { const v = n === 'seconds' ? +sec.toFixed(2) : Math.floor(sec / len); sec -= v * len; return v + ' ' + n; }).join(', ');
+};
+$('revIn').oninput = showRev;
+$('swap').onclick = () => {
+  const rev = $('rev').hidden = !$('rev').hidden;
+  document.querySelector('.grid').hidden = !rev;
+  rev ? convert() : showRev();
+};
 
 // Countdowns to yearly dates
 const nextDate = (m, d) => { const n = new Date(), t = new Date(n.getFullYear(), m - 1, d); if (t <= n) t.setFullYear(t.getFullYear() + 1); return t; };
