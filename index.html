@@ -11,7 +11,7 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
   ['Halloween', 10, 31],
   ['Christmas', 12, 25],
   ['WW2 / 1 September', 9, 1],
-  ['9/11 (Holiday)', 9, 11],
+  ['9/11', 9, 11],
 ];
 // ================================
 </script>
@@ -19,17 +19,22 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Peter Time</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 16px; background: #f6f7f9; color: #222; }
-  section { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px #0002; }
+  :root { --bg: #f6f7f9; --card: #fff; --text: #222; --muted: #666; --line: #ccd; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #121417; --card: #1e2126; --text: #e8e8e8; --muted: #9aa; --line: #3a3f47; color-scheme: dark; } }
+  body { font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 16px; background: var(--bg); color: var(--text); }
+  section { background: var(--card); border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px #0002; }
   h1 { font-size: 1.6rem; } h2 { margin-top: 0; font-size: 1.15rem; }
   input, select, button { font: inherit; padding: 6px 10px; margin: 4px 4px 4px 0; }
   .out { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; word-break: break-all; }
-  small { color: #666; }
+  small { color: var(--muted); }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { overflow-x: hidden; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 8px; }
-  .grid label { display: flex; flex-direction: column; font-size: .9rem; }
-  .grid input { width: 100%; margin: 2px 0 0; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+  @media (min-width: 480px) { .grid { grid-template-columns: repeat(7, 1fr); } }
+  .grid label { display: flex; flex-direction: column; align-items: center; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .grid input { width: 100%; margin: 3px 0 0; padding: 8px 4px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); -moz-appearance: textfield; }
+  .grid input::-webkit-inner-spin-button, .grid input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .grid input:focus { outline: 2px solid #4a7dff; border-color: transparent; }
   #dates div { padding: 4px 0; font-variant-numeric: tabular-nums; }
 </style>
 </head>
@@ -41,13 +46,13 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
 <section>
   <h2>Converter</h2>
   <div class="grid">
-    <label>Years <input data-s="31556952" type="number" step="any" inputmode="decimal"></label>
-    <label>Months <input data-s="2629746" type="number" step="any" inputmode="decimal"></label>
-    <label>Weeks <input data-s="604800" type="number" step="any" inputmode="decimal"></label>
-    <label>Days <input data-s="86400" type="number" step="any" inputmode="decimal"></label>
-    <label>Hours <input data-s="3600" type="number" step="any" inputmode="decimal"></label>
-    <label>Minutes <input data-s="60" type="number" step="any" inputmode="decimal"></label>
-    <label>Seconds <input data-s="1" type="number" step="any" inputmode="decimal"></label>
+    <label>Years <input data-s="31556952" type="number" step="any" inputmode="decimal" placeholder="0"></label>
+    <label>Months <input data-s="2629746" type="number" step="any" inputmode="decimal" placeholder="0"></label>
+    <label>Weeks <input data-s="604800" type="number" step="any" inputmode="decimal" placeholder="0"></label>
+    <label>Days <input data-s="86400" type="number" step="any" inputmode="decimal" placeholder="0"></label>
+    <label>Hours <input data-s="3600" type="number" step="any" inputmode="decimal" placeholder="0"></label>
+    <label>Minutes <input data-s="60" type="number" step="any" inputmode="decimal" placeholder="0"></label>
+    <label>Seconds <input data-s="1" type="number" step="any" inputmode="decimal" placeholder="0"></label>
   </div>
   <div class="out" id="conv"></div>
 </section>
@@ -74,7 +79,7 @@ const DATES = [                      // countdowns: [name, month 1-12, day]
   <h2>Timer</h2>
   <input id="tIn" type="number" min="0" step="any" value="0.0000001" aria-label="Amount"> <span class="u"></span>
   <div class="out" id="tOut"></div>
-  <button id="tStart">Start</button><button id="tStop">Stop</button>
+  <button id="tStart">Start</button><button id="tStop">Stop</button><button id="tReset">Reset</button>
 </section>
 
 <script>
@@ -130,6 +135,7 @@ $('swReset').onclick = () => { swAcc = 0; if (swStart) swStart = Date.now(); };
 let tEnd = null;
 $('tStart').onclick = () => { tEnd = Date.now() + $('tIn').value * PETER_MS; };
 $('tStop').onclick = () => { tEnd = null; };
+$('tReset').onclick = () => { tEnd = null; $('tOut').textContent = ''; };
 
 setInterval(() => {
   $('sw').textContent = fmt(swNow());
